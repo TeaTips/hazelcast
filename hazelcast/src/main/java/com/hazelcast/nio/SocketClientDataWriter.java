@@ -14,25 +14,19 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.nio;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
+import com.hazelcast.nio.serialization.DataAdapter;
 
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
+import java.nio.ByteBuffer;
 
-    TextCommandType getType();
+class SocketClientDataWriter implements SocketWriter<DataAdapter> {
 
-    void init(SocketTextReader socketTextReader, long requestId);
+    SocketClientDataWriter(TcpIpConnection connection) {
+    }
 
-    SocketTextReader getSocketTextReader();
-
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
-
+    public boolean write(DataAdapter writer, ByteBuffer socketBuffer) throws Exception {
+        System.err.println("writing data -> " + writer.getData());
+        return writer.writeTo(socketBuffer);
+    }
 }

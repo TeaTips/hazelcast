@@ -127,7 +127,7 @@ public class TcpIpJoiner extends AbstractJoiner {
             }
             boolean foundConnection = false;
             int numberOfSeconds = 0;
-            final int connectionTimeoutSeconds = config.getNetworkConfig().getJoin().getTcpIpConfig().getConnectionTimeoutSeconds();
+            final int connectionTimeoutSeconds = getConnTimeoutSeconds();
             while (!foundConnection && numberOfSeconds < connectionTimeoutSeconds) {
                 logger.log(Level.FINEST, "Removing failedConnections: " + node.getFailedConnections());
                 colPossibleAddresses.removeAll(node.getFailedConnections());
@@ -219,6 +219,10 @@ public class TcpIpJoiner extends AbstractJoiner {
         } catch (Throwable t) {
             logger.log(Level.SEVERE, t.getMessage(), t);
         }
+    }
+
+    protected int getConnTimeoutSeconds() {
+        return config.getNetworkConfig().getJoin().getTcpIpConfig().getConnectionTimeoutSeconds();
     }
 
     private void lookForMaster(Collection<Address> colPossibleAddresses) throws InterruptedException {
@@ -359,7 +363,6 @@ public class TcpIpJoiner extends AbstractJoiner {
                 logger.log(Level.WARNING, e.getMessage(), e);
             }
         }
-//        possibleAddresses.addAll(networkConfig.getJoin().getTcpIpConfig().getAddresses());
         return possibleAddresses;
     }
 

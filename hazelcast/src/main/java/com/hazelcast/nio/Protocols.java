@@ -14,25 +14,17 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.nio;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
+/**
+ * @mdogan 3/11/13
+ */
+final class Protocols {
 
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
+    static final String CLUSTER = "HZC";
+    static final String CLIENT_TEXT = "P01";
+    static final String CLIENT_BINARY = "CB1";
+    static final String TEXT = "TXT";
 
-    TextCommandType getType();
-
-    void init(SocketTextReader socketTextReader, long requestId);
-
-    SocketTextReader getSocketTextReader();
-
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
-
+    private Protocols() {}
 }

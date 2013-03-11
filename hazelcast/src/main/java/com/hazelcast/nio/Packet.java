@@ -17,18 +17,19 @@
 package com.hazelcast.nio;
 
 import com.hazelcast.nio.serialization.Data;
-import com.hazelcast.nio.serialization.DataWriter;
+import com.hazelcast.nio.serialization.DataAdapter;
 import com.hazelcast.nio.serialization.SerializationContext;
 import com.hazelcast.spi.Connection;
 
 import java.nio.ByteBuffer;
 
-public final class Packet extends DataWriter implements SocketWritable {
+public final class Packet extends DataAdapter implements SocketWritable, SocketReadable {
 
     public static final byte PACKET_VERSION = 1;
 
     public static final int HEADER_OP = 0;
     public static final int HEADER_EVENT = 1;
+    public static final int HEADER_CLIENT = 2;
 
     private byte header;
 

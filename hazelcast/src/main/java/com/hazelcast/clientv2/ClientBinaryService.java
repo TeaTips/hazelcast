@@ -14,25 +14,11 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.clientv2;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
-
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
-
-    TextCommandType getType();
-
-    void init(SocketTextReader socketTextReader, long requestId);
-
-    SocketTextReader getSocketTextReader();
-
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
+/**
+ * @mdogan 2/20/13
+ */
+public interface ClientBinaryService {
 
 }

@@ -19,6 +19,7 @@ package com.hazelcast.instance;
 import com.hazelcast.ascii.TextCommandService;
 import com.hazelcast.ascii.TextCommandServiceImpl;
 import com.hazelcast.client.ClientCommandService;
+import com.hazelcast.clientv2.ClientEngine;
 import com.hazelcast.cluster.*;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.JoinConfig;
@@ -78,6 +79,8 @@ public class Node {
 
     public final NodeEngineImpl nodeEngine;
 
+    public final ClientEngine clientEngine;
+
     public final PartitionServiceImpl partitionService;
 
     public final ClusterServiceImpl clusterService;
@@ -127,7 +130,7 @@ public class Node {
         this.groupProperties = new GroupProperties(config);
         SerializationServiceImpl ss;
         try {
-            ss = new SerializationServiceImpl(config.getSerializationConfig(), hazelcastInstance.managedContext);
+            ss = new SerializationServiceImpl(config.getSerializationConfig(), new SystemPortableFactory(), hazelcastInstance.managedContext);
         } catch (Exception e) {
             throw ExceptionUtil.rethrow(e);
         }
@@ -157,6 +160,7 @@ public class Node {
         }
         securityContext = config.getSecurityConfig().isEnabled() ? initializer.getSecurityContext() : null;
         nodeEngine = new NodeEngineImpl(this);
+        clientEngine = new ClientEngine(this);
         connectionManager = nodeContext.createConnectionManager(this, serverSocketChannel);
         clusterService = new ClusterServiceImpl(this);
         partitionService = new PartitionServiceImpl(this);
@@ -390,6 +394,7 @@ public class Node {
                 managementCenterService.shutdown();
             }
             logger.log(Level.FINEST, "Shutting down client command service");
+            clientEngine.shutdown();
             clientCommandService.shutdown();
             logger.log(Level.FINEST, "Shutting down node engine");
             nodeEngine.shutdown();

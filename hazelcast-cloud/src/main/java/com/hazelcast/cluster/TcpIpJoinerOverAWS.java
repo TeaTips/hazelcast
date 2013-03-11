@@ -21,7 +21,6 @@ import com.hazelcast.aws.AWSClient;
 import com.hazelcast.config.AwsConfig;
 import com.hazelcast.instance.Node;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -31,11 +30,12 @@ import java.util.logging.Level;
 public class TcpIpJoinerOverAWS extends TcpIpJoiner {
 
     final AWSClient aws;
-    final ILogger logger = Logger.getLogger(this.getClass().getName());
+    final ILogger logger;
     final String groupName;
 
     public TcpIpJoinerOverAWS(Node node) {
         super(node);
+        logger = node.getLogger(getClass());
         AwsConfig awsConfig = node.getConfig().getNetworkConfig().getJoin().getAwsConfig();
         aws = new AWSClient(awsConfig);
         if (awsConfig.getRegion() != null && awsConfig.getRegion().length() > 0) {
@@ -52,8 +52,14 @@ public class TcpIpJoinerOverAWS extends TcpIpJoiner {
             return list;
         } catch (Exception e) {
             logger.log(Level.WARNING, e.getMessage(), e);
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
+    }
+
+    @Override
+    protected int getConnTimeoutSeconds() {
+        AwsConfig awsConfig = node.getConfig().getNetworkConfig().getJoin().getAwsConfig();
+        return awsConfig.getConnectionTimeoutSeconds();
     }
 }
 

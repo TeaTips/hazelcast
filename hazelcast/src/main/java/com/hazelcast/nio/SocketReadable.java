@@ -14,25 +14,12 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.nio;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
+import java.nio.ByteBuffer;
 
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
+public interface SocketReadable {
 
-    TextCommandType getType();
-
-    void init(SocketTextReader socketTextReader, long requestId);
-
-    SocketTextReader getSocketTextReader();
-
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
+    boolean readFrom(ByteBuffer source);
 
 }

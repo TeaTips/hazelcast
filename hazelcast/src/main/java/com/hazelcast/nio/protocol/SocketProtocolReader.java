@@ -110,7 +110,7 @@ public class SocketProtocolReader implements SocketReader {
                             }
                         }
                         Protocol protocol = new Protocol(connection, command, flag, threadId, noreply, args, datas);
-                        connection.setType(TcpIpConnection.Type.PROTOCOL_CLIENT);
+                        connection.setType(ConnectionType.PROTOCOL_CLIENT);
                         ioService.handleClientCommand(protocol);
                         reset();
                     }

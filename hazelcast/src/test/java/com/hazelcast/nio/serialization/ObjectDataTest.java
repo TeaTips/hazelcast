@@ -47,7 +47,7 @@ public class ObjectDataTest {
         byte[] bytes1 = out.toByteArray();
 
         ByteBuffer buffer = ByteBuffer.allocate(1024);
-        DataWriter dataWriter = new DataWriter(data1, ss.getSerializationContext());
+        DataAdapter dataWriter = new DataAdapter(data1, ss.getSerializationContext());
         dataWriter.writeTo(buffer);
 
         Assert.assertEquals(bytes1.length, buffer.position());

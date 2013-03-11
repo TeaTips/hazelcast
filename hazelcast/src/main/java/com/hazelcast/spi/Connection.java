@@ -18,14 +18,14 @@ package com.hazelcast.spi;
 
 import com.hazelcast.nio.Address;
 import com.hazelcast.nio.ConnectionMonitor;
-import com.hazelcast.nio.Packet;
+import com.hazelcast.nio.SocketWritable;
 
 public interface Connection {
     Address getEndPoint();
 
     boolean live();
 
-    boolean write(Packet packet);
+    boolean write(SocketWritable socketWritable);
 
     long lastReadTime();
 

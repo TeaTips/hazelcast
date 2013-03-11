@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.instance;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
+import com.hazelcast.nio.serialization.Portable;
+import com.hazelcast.nio.serialization.PortableFactory;
 
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
+/**
+ * @mdogan 3/11/13
+ */
+public class SystemPortableFactory implements PortableFactory {
 
-    TextCommandType getType();
 
-    void init(SocketTextReader socketTextReader, long requestId);
 
-    SocketTextReader getSocketTextReader();
 
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
-
+    public Portable create(int classId) {
+        return null;
+    }
 }

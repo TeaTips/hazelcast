@@ -164,9 +164,6 @@ public class TcpIpConnectionManager implements ConnectionManager {
             if (CipherHelper.isSymmetricEncryptionEnabled(ioService)) {
                 throw new RuntimeException("SSL and SymmetricEncryption cannot be both enabled!");
             }
-            if (CipherHelper.isAsymmetricEncryptionEnabled(ioService)) {
-                throw new RuntimeException("SSL and AsymmetricEncryption cannot be both enabled!");
-            }
             SSLContextFactory sslContextFactoryObject = (SSLContextFactory) sslConfig.getFactoryImplementation();
             try {
                 String factoryClassName = sslConfig.getFactoryClassName();

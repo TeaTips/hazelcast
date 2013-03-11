@@ -14,25 +14,18 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.clientv2.op;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
+import com.hazelcast.clientv2.ClientBinaryService;
+import com.hazelcast.nio.serialization.Portable;
 
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
+/**
+ * @mdogan 2/20/13
+ */
+public interface ClientOperation<S extends ClientBinaryService> extends Portable {
 
-    TextCommandType getType();
+    Object process(S service) throws Exception;
 
-    void init(SocketTextReader socketTextReader, long requestId);
-
-    SocketTextReader getSocketTextReader();
-
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
-
+    String getServiceName();
+    
 }

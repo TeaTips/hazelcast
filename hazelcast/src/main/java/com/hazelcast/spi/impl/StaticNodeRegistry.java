@@ -20,10 +20,7 @@ import com.hazelcast.cluster.*;
 import com.hazelcast.instance.AddressPicker;
 import com.hazelcast.instance.Node;
 import com.hazelcast.instance.NodeContext;
-import com.hazelcast.nio.Address;
-import com.hazelcast.nio.ConnectionListener;
-import com.hazelcast.nio.ConnectionMonitor;
-import com.hazelcast.nio.Packet;
+import com.hazelcast.nio.*;
 import com.hazelcast.spi.Connection;
 import com.hazelcast.spi.ConnectionManager;
 
@@ -161,7 +158,8 @@ public class StaticNodeRegistry {
                     return true;
                 }
 
-                public boolean write(Packet packet) {
+                public boolean write(SocketWritable socketWritable) {
+                    Packet packet = (Packet) socketWritable;
                     if (nodeEngine.getNode().isActive()) {
                         packet.setConn(thisConnection);
                         nodeEngine.handlePacket(packet);

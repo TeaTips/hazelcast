@@ -195,8 +195,6 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
                     handleInterfaces(child, networkConfigBuilder);
                 } else if ("symmetric-encryption".equals(nodeName)) {
                     handleSymmetricEncryption(child, networkConfigBuilder);
-                } else if ("asymmetric-encryption".equals(nodeName)) {
-                    handleAsymmetricEncryption(child, networkConfigBuilder);
                 } else if ("ssl".equals(nodeName)) {
                     handleSSLConfig(child, networkConfigBuilder);
                 } else if ("socket-interceptor".equals(nodeName)) {
@@ -319,11 +317,6 @@ public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDe
                 }
             }
             networkConfigBuilder.addPropertyValue("SSLConfig", sslConfigBuilder.getBeanDefinition());
-        }
-
-        public void handleAsymmetricEncryption(Node node, BeanDefinitionBuilder networkConfigBuilder) {
-            createAndFillBeanBuilder(node, AsymmetricEncryptionConfig.class, "asymmetricEncryptionConfig",
-                                     networkConfigBuilder);
         }
 
         public void handleSymmetricEncryption(Node node, BeanDefinitionBuilder networkConfigBuilder) {

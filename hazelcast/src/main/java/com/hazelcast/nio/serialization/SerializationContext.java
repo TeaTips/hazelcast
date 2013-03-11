@@ -34,5 +34,4 @@ public interface SerializationContext {
     ClassDefinition createClassDefinition(byte[] binary) throws IOException;
 
     ClassDefinition registerClassDefinition(ClassDefinition cd);
-
 }

@@ -17,13 +17,15 @@
 package com.hazelcast.nio.serialization;
 
 import com.hazelcast.nio.IOUtil;
+import com.hazelcast.nio.SocketReadable;
+import com.hazelcast.nio.SocketWritable;
 
 import java.nio.ByteBuffer;
 
 /**
  * @mdogan 1/23/13
  */
-public class DataWriter {
+public class DataAdapter implements SocketWritable, SocketReadable {
 
     protected static final int stHeader = 0;
     protected static final int stType = 1;
@@ -45,15 +47,15 @@ public class DataWriter {
     private transient short status = 0;
     private transient SerializationContext context;
 
-    public DataWriter(Data data) {
+    public DataAdapter(Data data) {
         this.data = data;
     }
 
-    public DataWriter(SerializationContext context) {
+    public DataAdapter(SerializationContext context) {
         this.context = context;
     }
 
-    public DataWriter(Data data, SerializationContext context) {
+    public DataAdapter(Data data, SerializationContext context) {
         this.data = data;
         this.context = context;
     }
@@ -68,14 +70,14 @@ public class DataWriter {
             if (destination.remaining() < 4) {
                 return false;
             }
-            destination.putInt(data.type);
+            destination.putInt(data.getType());
             setStatus(stType);
         }
         if (!isStatusSet(stClassId)) {
             if (destination.remaining() < 4) {
                 return false;
             }
-            final int classId = data.classDefinition == null ? Data.NO_CLASS_ID : data.classDefinition.getClassId();
+            final int classId = data.getClassDefinition() == null ? Data.NO_CLASS_ID : data.getClassDefinition().getClassId();
             destination.putInt(classId);
             if (classId == Data.NO_CLASS_ID) {
                 setStatus(stVersion);
@@ -88,7 +90,7 @@ public class DataWriter {
             if (destination.remaining() < 4) {
                 return false;
             }
-            final int version = data.classDefinition.getVersion();
+            final int version = data.getClassDefinition().getVersion();
             destination.putInt(version);
             setStatus(stVersion);
         }
@@ -96,7 +98,7 @@ public class DataWriter {
             if (destination.remaining() < 4) {
                 return false;
             }
-            final BinaryClassDefinition cd = (BinaryClassDefinition) data.classDefinition;
+            final BinaryClassDefinition cd = (BinaryClassDefinition) data.getClassDefinition();
             final byte[] binary = cd.getBinary();
             classDefSize = binary == null ? 0 : binary.length;
             destination.putInt(classDefSize);
@@ -124,7 +126,7 @@ public class DataWriter {
             if (size <= 0) {
                 setStatus(stValue);
             } else {
-                buffer = ByteBuffer.wrap(data.buffer);
+                buffer = ByteBuffer.wrap(data.getBuffer());
             }
         }
         if (!isStatusSet(stValue)) {
@@ -143,6 +145,9 @@ public class DataWriter {
         }
         setStatus(stAll);
         return true;
+    }
+
+    public void onEnqueue() {
     }
 
     /**

@@ -59,12 +59,12 @@ public final class SerializationServiceImpl implements SerializationService {
     private final DataSerializer dataSerializer;
     private final PortableSerializer portableSerializer;
     private final ManagedContext managedContext;
-    private final SerializationContext serializationContext;
+    private final SerializationContextImpl serializationContext;
 
     private volatile boolean active = true;
 
-    public SerializationServiceImpl(SerializationConfig config, ManagedContext managedContext) throws Exception {
-        this(config.getPortableVersion(), createPortableFactory(config), managedContext);
+    public SerializationServiceImpl(SerializationConfig config, PortableFactory systemPortableFactory, ManagedContext managedContext) throws Exception {
+        this(config.getPortableVersion(), createPortableFactory(systemPortableFactory, config), managedContext);
         if (config.getGlobalSerializer() != null) {
             GlobalSerializerConfig globalSerializerConfig = config.getGlobalSerializer();
             TypeSerializer serializer = globalSerializerConfig.getImplementation();
@@ -88,15 +88,14 @@ public final class SerializationServiceImpl implements SerializationService {
         registerConfiguredClassDefinitions(config);
     }
 
-    private static PortableFactory createPortableFactory(SerializationConfig config) throws Exception {
-        final PortableFactory portableFactory = config.getPortableFactory();
-        if (portableFactory == null) {
-            if (config.getPortableFactoryClass() == null) {
-                return null;
+    private static PortableFactory createPortableFactory(PortableFactory systemPortableFactory, SerializationConfig config) throws Exception {
+        PortableFactory userPortableFactory = config.getPortableFactory();
+        if (userPortableFactory == null) {
+            if (config.getPortableFactoryClass() != null) {
+                userPortableFactory = ClassLoaderUtil.newInstance(config.getPortableFactoryClass());
             }
-            return ClassLoaderUtil.newInstance(config.getPortableFactoryClass());
         }
-        return portableFactory;
+        return new PortableFactoryDelegate(systemPortableFactory, userPortableFactory);
     }
 
     private void registerConfiguredClassDefinitions(SerializationConfig config) {
@@ -135,7 +134,7 @@ public final class SerializationServiceImpl implements SerializationService {
         this(version, portableFactory, null);
     }
 
-    public SerializationServiceImpl(int version, PortableFactory portableFactory, ManagedContext managedContext) {
+    private SerializationServiceImpl(int version, PortableFactory portableFactory, ManagedContext managedContext) {
         this.managedContext = managedContext;
         serializationContext = new SerializationContextImpl(portableFactory, version);
         registerConstant(DataSerializable.class, dataSerializer = new DataSerializer());
@@ -437,6 +436,7 @@ public final class SerializationServiceImpl implements SerializationService {
         idMap.clear();
         fallback.set(null);
         constantTypesMap.clear();
+        serializationContext.clear();
         for (ContextAwareDataOutput output : outputPool) {
             output.close();
         }
@@ -561,6 +561,10 @@ public final class SerializationServiceImpl implements SerializationService {
 
         public int getVersion() {
             return version;
+        }
+
+        public void clear() {
+            versionedDefinitions.clear();
         }
     }
 

@@ -14,25 +14,30 @@
  * limitations under the License.
  */
 
-package com.hazelcast.ascii;
+package com.hazelcast.nio;
 
-import com.hazelcast.nio.SocketReadable;
-import com.hazelcast.nio.SocketWritable;
-import com.hazelcast.nio.ascii.SocketTextReader;
-import com.hazelcast.nio.ascii.SocketTextWriter;
+public enum ConnectionType {
 
-public interface TextCommand extends TextCommandConstants, SocketWritable, SocketReadable {
+    NONE(false, false),
+    MEMBER(true, true),
+    BINARY_CLIENT(false, true),
+    PROTOCOL_CLIENT(false, true),
+    REST_CLIENT(false, false),
+    MEMCACHE_CLIENT(false, false);
 
-    TextCommandType getType();
+    final boolean member;
+    final boolean binary;
 
-    void init(SocketTextReader socketTextReader, long requestId);
+    ConnectionType(boolean member, boolean binary) {
+        this.member = member;
+        this.binary = binary;
+    }
 
-    SocketTextReader getSocketTextReader();
+    public boolean isBinary() {
+        return binary;
+    }
 
-    SocketTextWriter getSocketTextWriter();
-
-    long getRequestId();
-
-    boolean shouldReply();
-
+    public boolean isClient() {
+        return !member;
+    }
 }

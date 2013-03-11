@@ -39,7 +39,7 @@ public final class TcpIpConnection implements Connection {
 
     private volatile boolean live = true;
 
-    private volatile Type type = Type.NONE;
+    private volatile ConnectionType type = ConnectionType.NONE;
 
     private Address endPoint = null;
 
@@ -48,7 +48,6 @@ public final class TcpIpConnection implements Connection {
     private final SystemLogService systemLogService;
 
     private final int connectionId;
-//    private final SimpleBoundedQueue<Packet> packetQueue = new SimpleBoundedQueue<Packet>(100);
 
     private ConnectionMonitor monitor;
 
@@ -67,24 +66,14 @@ public final class TcpIpConnection implements Connection {
         return systemLogService;
     }
 
-    public Type getType() {
+    public ConnectionType getType() {
         return type;
     }
 
     public void releasePacket(Packet packet) {
-//        if (packet == null) return;
-//        packet.reset();
-//        packetQueue.offer(packet);
     }
 
     public Packet obtainPacket() {
-//        Packet packet = packetQueue.poll();
-//        if (packet == null) {
-//            packet = new Packet(connectionManager.getSerializationContext());
-//        } else {
-//            packet.reset();
-//        }
-//        return packet;
         return new Packet(connectionManager.getSerializationContext());
     }
 
@@ -92,47 +81,18 @@ public final class TcpIpConnection implements Connection {
         return connectionManager;
     }
 
-    public void write(SocketWritable packet) {
-        writeHandler.enqueueSocketWritable(packet);
-    }
-
-    public boolean write(Packet packet) {
+    public boolean write(SocketWritable socketWritable) {
         if (!live) return false;
-        writeHandler.enqueueSocketWritable(packet);
+        writeHandler.enqueueSocketWritable(socketWritable);
         return true;
     }
 
-    public enum Type {
-        NONE(false, false),
-        MEMBER(true, true),
-        CLIENT(false, true),
-        PROTOCOL_CLIENT(false, true),
-        REST_CLIENT(false, false),
-        MEMCACHE_CLIENT(false, false);
-
-        final boolean member;
-        final boolean binary;
-
-        Type(boolean member, boolean binary) {
-            this.member = member;
-            this.binary = binary;
-        }
-
-        public boolean isBinary() {
-            return binary;
-        }
-
-        public boolean isClient() {
-            return !member;
-        }
-    }
-
     public boolean isClient() {
-        return (type != null) && type != Type.NONE && type.isClient();
+        return (type != null) && type != ConnectionType.NONE && type.isClient();
     }
 
-    public void setType(Type type) {
-        if (this.type == Type.NONE) {
+    public void setType(ConnectionType type) {
+        if (this.type == ConnectionType.NONE) {
             this.type = type;
         }
     }

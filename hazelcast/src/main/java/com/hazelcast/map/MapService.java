@@ -17,6 +17,7 @@
 package com.hazelcast.map;
 
 import com.hazelcast.client.ClientCommandHandler;
+import com.hazelcast.clientv2.ClientBinaryService;
 import com.hazelcast.cluster.ClusterServiceImpl;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.MapConfig;
@@ -67,7 +68,7 @@ import java.util.logging.Level;
 
 public class MapService implements ManagedService, MigrationAwareService, MembershipAwareService,
         TransactionalService, RemoteService, EventPublishingService<EventData, EntryListener>,
-        ClientProtocolService, PostJoinAwareService, SplitBrainHandlerService {
+        ClientProtocolService, PostJoinAwareService, SplitBrainHandlerService, ClientBinaryService {
 
     public final static String SERVICE_NAME = "hz:impl:mapService";
 
