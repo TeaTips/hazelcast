@@ -119,7 +119,7 @@
         <title>Configuration</title>
         <xi:include href="config/Config.xml"/>
         <xi:include href="config/ConfigGroup.xml"/>
-        <xi:include href="network/NetworkConfig.xml" />
+        <xi:include href="network/NetworkConfig.xml"/>
         <xi:include href="config/PartitionGroupConfig.xml"/>
         <xi:include href="config/ListenerConfig.xml"/>
         <xi:include href="config/WildcardConfiguration.xml"/>
@@ -160,6 +160,7 @@
         <xi:include href="mancenter/MC_Queues.xml"/>
         <xi:include href="mancenter/MC_Topics.xml"/>
         <xi:include href="mancenter/MC_Members.xml"/>
+        <xi:include href="mancenter/MC_Alerts.xml"/>
         <xi:include href="mancenter/MC_Logs.xml"/>
         <xi:include href="mancenter/MC_Scripting.xml"/>
         <xi:include href="mancenter/MC_TimeTravel.xml"/>
