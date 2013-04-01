@@ -16,7 +16,12 @@
 
 package com.hazelcast.spi;
 
+import com.hazelcast.cluster.JoinOperation;
+import com.hazelcast.nio.Address;
+import com.hazelcast.nio.Connection;
+import com.hazelcast.partition.MigrationCycleOperation;
 import com.hazelcast.spi.annotation.PrivateApi;
+import com.hazelcast.spi.impl.OperationFinalizer;
 
 /**
  * @mdogan 12/21/12
@@ -24,6 +29,26 @@ import com.hazelcast.spi.annotation.PrivateApi;
 
 @PrivateApi
 public final class OperationAccessor {
+
+    private static final ClassLoader thisClassLoader = OperationAccessor.class.getClassLoader();
+
+    public static boolean isJoinOperation(Operation op) {
+        return op instanceof JoinOperation
+                && op.getClass().getClassLoader() == thisClassLoader;
+    }
+
+    public static boolean isMigrationOperation(Operation op) {
+        return op instanceof MigrationCycleOperation
+                && op.getClass().getClassLoader() == thisClassLoader;
+    }
+
+    public static void setCallerAddress(Operation op, Address caller) {
+        op.setCallerAddress(caller);
+    }
+
+    public static void setConnection(Operation op, Connection connection) {
+        op.setConnection(connection);
+    }
 
     public static void setCallId(Operation op, long callId) {
         op.setCallId(callId);
@@ -39,6 +64,14 @@ public final class OperationAccessor {
 
     public static void setCallTimeout(Operation op, long callTimeout) {
         op.setCallTimeout(callTimeout);
+    }
+
+    public static void setFinalizer(Operation op, OperationFinalizer f) {
+        op.setFinalizer(f);
+    }
+
+    public static OperationFinalizer removeFinalizer(Operation op) {
+        return op.removeFinalizer();
     }
 
     private OperationAccessor() {

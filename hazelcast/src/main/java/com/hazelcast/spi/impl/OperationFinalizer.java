@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package com.hazelcast.spi;
+package com.hazelcast.spi.impl;
 
 /**
- * @mdogan 12/3/12
+ * @mdogan 3/28/13
  */
-public interface BackupOperation extends PartitionAwareOperation {
-
+public interface OperationFinalizer extends Runnable {
 }

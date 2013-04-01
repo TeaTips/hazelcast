@@ -23,7 +23,9 @@ import java.util.concurrent.TimeUnit;
  */
 public interface SpinLock {
 
-    void lock();
+    void lock() throws InterruptedException;
+
+    boolean tryLock();
 
     boolean tryLock(final long time, TimeUnit unit) throws InterruptedException;
 

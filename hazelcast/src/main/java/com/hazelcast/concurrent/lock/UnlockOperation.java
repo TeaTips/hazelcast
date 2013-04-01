@@ -56,7 +56,7 @@ public class UnlockOperation extends BaseLockOperation implements Notifier, Back
     public void afterRun() throws Exception {
         final AwaitOperation awaitResponse = getLockStore().pollExpiredAwaitOp(key);
         if (awaitResponse != null) {
-            getNodeEngine().getOperationService().runOperationUnderExistingLock(awaitResponse);
+            getNodeEngine().getOperationService().runOperationUnderExistingLock(null, awaitResponse);
         }
         shouldNotify = awaitResponse == null;
     }
@@ -70,7 +70,7 @@ public class UnlockOperation extends BaseLockOperation implements Notifier, Back
     }
 
     public boolean shouldNotify() {
-        return /*!getLockStore().isLocked(key) && */ shouldNotify;
+        return /*!getOrCreateDefaultLockStore().isLocked(key) && */ shouldNotify;
     }
 
     public final WaitNotifyKey getNotifiedKey() {

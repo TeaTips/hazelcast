@@ -17,6 +17,7 @@
 package com.hazelcast.spi;
 
 import com.hazelcast.nio.Address;
+import com.hazelcast.nio.Connection;
 
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,7 @@ public interface OperationService {
      *
      * @param op
      */
-    void runOperationUnderExistingLock(Operation op);
+    void runOperationUnderExistingLock(Operation parentOp, Operation op);
 
     InvocationBuilder createInvocationBuilder(String serviceName, Operation op, int partitionId);
 
