@@ -34,6 +34,8 @@ public final class SpinReadWriteLock implements ReadWriteLock {
 
     private final AtomicBoolean locked = new AtomicBoolean(false);
 
+    private long tid = -1L;
+
     private final AtomicInteger readCount = new AtomicInteger();
 
     public SpinReadWriteLock() {
@@ -76,6 +78,10 @@ public final class SpinReadWriteLock implements ReadWriteLock {
     }
 
     private boolean acquireWriteLock(final long time, TimeUnit unit) throws InterruptedException {
+        final Thread currentThread = Thread.currentThread();
+        if (currentThread.getId() == tid) {
+            return true;
+        }
         final long spin = spinInterval;
         final long timeInMillis = unit.toMillis(time > 0 ? time : 0);
         long elapsed = 0L;
@@ -92,13 +98,19 @@ public final class SpinReadWriteLock implements ReadWriteLock {
                 return false;
             }
         }
+        tid = currentThread.getId();
         return true;
     }
 
     private void releaseWriteLock() {
+        final Thread currentThread = Thread.currentThread();
+        if (currentThread.getId() != tid) {
+            throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
+        }
         if (!locked.getAndSet(false)) {
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
+        tid = -1L;
     }
 
     private final class ReadLock implements Lock {

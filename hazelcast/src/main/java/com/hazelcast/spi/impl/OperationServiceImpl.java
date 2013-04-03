@@ -97,12 +97,13 @@ final class OperationServiceImpl implements OperationService {
 
         ownerLocks = new Lock[100000];
         for (int i = 0; i < ownerLocks.length; i++) {
+//            ownerLocks[i] = new SpinLock();
             ownerLocks[i] = new ReentrantLock();
         }
         int partitionCount = node.groupProperties.PARTITION_COUNT.getInteger();
         partitionLocks = new ReadWriteLock[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
-//            partitionLocks[i] = new SpinReadWriteLock(1, TimeUnit.MILLISECONDS);
+//            partitionLocks[i] = new SpinReadWriteLock();
             partitionLocks[i] = new ReentrantReadWriteLock();
         }
         executingCalls = Collections.newSetFromMap(new ConcurrentHashMap<RemoteCallKey, Boolean>(1000, 0.75f, (reallyMultiCore ? coreSize * 4 : 16)));
