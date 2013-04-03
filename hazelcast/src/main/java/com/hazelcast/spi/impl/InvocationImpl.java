@@ -258,7 +258,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
                     }
                     // TODO: @mm - improve logging (see SystemLogService)
                     if (localInvokeCount > 99 && localInvokeCount % 10 == 0) {
-                        logger.log(Level.WARNING, "Retrying invocation: " + toString() + ", Reason: " + error);
+//                        logger.log(Level.WARNING, "Retrying invocation: " + toString() + ", Reason: " + error);
                     }
                     doInvoke();
                 } else if (action == InvocationAction.CONTINUE_WAIT) {
@@ -279,7 +279,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
                     continue;
                 }
                 // TODO: @mm - improve logging (see SystemLogService)
-                logger.log(Level.WARNING, "No response for " + lastPollTime + " ms. " + toString());
+//                logger.log(Level.WARNING, "No response for " + lastPollTime + " ms. " + toString());
 
                 boolean executing = isOperationExecuting(target);
                 if (!executing) {

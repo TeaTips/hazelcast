@@ -143,7 +143,7 @@ class WaitNotifyServiceImpl implements WaitNotifyService {
                     if (waitingOp.shouldWait()) {
                         return;
                     }
-                    processUnderExistingLock(op);
+                    processUnderExistingLock(null, op);
                 }
                 waitingOp.setValid(false);
             }
@@ -152,8 +152,8 @@ class WaitNotifyServiceImpl implements WaitNotifyService {
         }
     }
 
-    private void processUnderExistingLock(Operation op) {
-        nodeEngine.getOperationService().runOperationUnderExistingLock(op);
+    private void processUnderExistingLock(Operation parentOp, Operation op) {
+        nodeEngine.getOperationService().runOperationUnderExistingLock(parentOp, op);
     }
 
     // invalidated waiting ops will removed from queue eventually by notifiers.

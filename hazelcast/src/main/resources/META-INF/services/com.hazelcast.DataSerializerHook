@@ -4,3 +4,4 @@ com.hazelcast.map.DataSerializerMapHook
 com.hazelcast.queue.DataSerializerQueueHook
 com.hazelcast.collection.DataSerializerCollectionHook
 com.hazelcast.executor.DataSerializerExecutorHook
+com.hazelcast.sample.Hook

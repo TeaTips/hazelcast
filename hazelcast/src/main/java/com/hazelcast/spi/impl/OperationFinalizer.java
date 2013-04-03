@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-package com.hazelcast.util;
+package com.hazelcast.spi.impl;
 
-public interface Prioritized {
+/**
+ * @mdogan 3/28/13
+ */
+public interface OperationFinalizer extends Runnable {
 }

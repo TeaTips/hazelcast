@@ -21,6 +21,7 @@ import com.hazelcast.nio.Address;
 import com.hazelcast.nio.Connection;
 import com.hazelcast.partition.MigrationCycleOperation;
 import com.hazelcast.spi.annotation.PrivateApi;
+import com.hazelcast.spi.impl.OperationFinalizer;
 
 /**
  * @mdogan 12/21/12
@@ -63,6 +64,14 @@ public final class OperationAccessor {
 
     public static void setCallTimeout(Operation op, long callTimeout) {
         op.setCallTimeout(callTimeout);
+    }
+
+    public static void setFinalizer(Operation op, OperationFinalizer f) {
+        op.setFinalizer(f);
+    }
+
+    public static OperationFinalizer removeFinalizer(Operation op) {
+        return op.removeFinalizer();
     }
 
     private OperationAccessor() {

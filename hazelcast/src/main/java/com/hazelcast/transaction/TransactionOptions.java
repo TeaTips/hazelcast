@@ -84,7 +84,6 @@ public final class TransactionOptions implements DataSerializable {
         transactionType = TransactionType.getByValue(in.readInt());
     }
 
-
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();

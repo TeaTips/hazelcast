@@ -27,6 +27,7 @@ import com.hazelcast.partition.PartitionInfo;
 import com.hazelcast.spi.exception.RetryableException;
 import com.hazelcast.spi.exception.RetryableHazelcastException;
 import com.hazelcast.spi.impl.NodeEngineImpl;
+import com.hazelcast.spi.impl.OperationFinalizer;
 
 import java.io.IOException;
 
@@ -223,6 +224,25 @@ public abstract class Operation implements DataSerializable {
     public Operation setCallerUuid(String callerUuid) {
         this.callerUuid = callerUuid;
         return this;
+    }
+
+    private transient volatile OperationFinalizer finalizer;
+
+    // Accessed using OperationAccessor
+    OperationFinalizer removeFinalizer() {
+        final OperationFinalizer f = finalizer;
+        if (f != null) {
+            finalizer = null;
+        }
+        return f;
+    }
+
+    // Accessed using OperationAccessor
+    void setFinalizer(OperationFinalizer finalizer) {
+        if (this.finalizer != null) {
+            throw new IllegalStateException("Operation already has a finalizer!");
+        }
+        this.finalizer = finalizer;
     }
 
     private transient boolean writeDataFlag = false;

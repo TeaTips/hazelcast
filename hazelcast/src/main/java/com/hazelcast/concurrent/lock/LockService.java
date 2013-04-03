@@ -19,8 +19,6 @@ package com.hazelcast.concurrent.lock;
 import com.hazelcast.client.ClientCommandHandler;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.instance.MemberImpl;
-import com.hazelcast.map.EvictionProcessor;
-import com.hazelcast.map.MapStoreDeleteProcessor;
 import com.hazelcast.nio.protocol.Command;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.MigrationEndpoint;

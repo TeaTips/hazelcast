@@ -45,7 +45,7 @@ public interface OperationService {
      *
      * @param op
      */
-    void runOperationUnderExistingLock(Operation op);
+    void runOperationUnderExistingLock(Operation parentOp, Operation op);
 
     InvocationBuilder createInvocationBuilder(String serviceName, Operation op, int partitionId);
 
