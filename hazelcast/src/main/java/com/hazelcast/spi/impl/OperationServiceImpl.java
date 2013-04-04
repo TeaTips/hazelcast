@@ -496,7 +496,7 @@ final class OperationServiceImpl implements OperationService {
                     } else {
                         if (backupOp.returnsResponse()) {
                             final InvocationImpl inv = (InvocationImpl) createInvocationBuilder(serviceName, backupOp, partitionId)
-                                    .setReplicaIndex(replicaIndex).setTryPauseMillis(100).build();
+                                    .setReplicaIndex(replicaIndex).build();
 
                             inv.setCallback(callback);
                             inv.invoke();
