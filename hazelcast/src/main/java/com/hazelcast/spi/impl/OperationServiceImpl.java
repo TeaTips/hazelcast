@@ -390,15 +390,17 @@ final class OperationServiceImpl implements OperationService {
         }
 
         public void notify(InvocationImpl inv) {
-            setResponse(retryOrGetResult(inv), inv.getReplicaIndex());
-        }
-
-        void setResponse(final Object obj, final int replicaIndex) {
             synchronized (this) {
                 final int total = syncBackupCount + asyncBackupCount;
                 if (isDone(total)) {
                     return;
                 }
+                setResponse(retryOrGetResult(inv), inv.getReplicaIndex());
+            }
+        }
+
+        void setResponse(final Object obj, final int replicaIndex) {
+            synchronized (this) {
                 try {
                     if (obj != null) {
                         if (obj instanceof Throwable) {
@@ -416,7 +418,7 @@ final class OperationServiceImpl implements OperationService {
                         }
                     }
 
-                    final boolean allDone = isDone(total);
+                    final boolean allDone = isDone(syncBackupCount + asyncBackupCount);
                     final boolean syncDone = allDone || isDone(syncBackupCount);
                     if (syncDone && syncBackupCount > 0) {
                         // if sync backup is zero, response is sent before notification
@@ -497,7 +499,7 @@ final class OperationServiceImpl implements OperationService {
                     } else {
                         if (backupOp.returnsResponse()) {
                             final InvocationImpl inv = (InvocationImpl) createInvocationBuilder(serviceName, backupOp, partitionId)
-                                    .setReplicaIndex(replicaIndex).build();
+                                    .setTryPauseMillis(250).setReplicaIndex(replicaIndex).build();
 
                             inv.setCallback(callback);
                             inv.invoke();
