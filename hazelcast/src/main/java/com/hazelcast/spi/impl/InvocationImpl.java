@@ -420,7 +420,13 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
     }
 
     public boolean cancel(boolean mayInterruptIfRunning) {
-        throw new UnsupportedOperationException();
+        invokeCount = maxTryCount;
+        done = true;
+        return true;
+    }
+
+    public boolean canRetry() {
+        return invokeCount < maxTryCount;
     }
 
     public boolean isCancelled() {

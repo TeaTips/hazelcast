@@ -454,18 +454,19 @@ final class OperationServiceImpl implements OperationService {
             }
             if (result instanceof MemberLeftException) {
                 // backup replica left! no need to retry!
+                inv.cancel(false);
                 return Boolean.TRUE;
             }
-            if (partition.getReplicaAddress(inv.getReplicaIndex()) == null) {
+            if (inv.getTarget() == null) {
+                inv.cancel(false);
                 // backup replica is down! no need to retry!
                 return Boolean.TRUE;
             }
-            final boolean canRetry = inv.getMaxTryCount() > inv.getInvokeCount();
             if (result == InvocationImpl.TIMEOUT_RESPONSE) {
-                return canRetry ? null : new CallTimeoutException();
+                return inv.canRetry() ? null : new CallTimeoutException();
             }
             if (result instanceof RetryableException) {
-                return canRetry ? null : result;
+                return inv.canRetry() ? null : result;
             }
             return result;
         }
