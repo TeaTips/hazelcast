@@ -424,7 +424,6 @@ final class OperationServiceImpl implements OperationService {
                         sendResponse(op, null);
                     }
                     if (allDone) {
-//                        f.cancel(false);
                         finalizeOperation(op);
                     }
                 } catch (Throwable e) {
@@ -449,7 +448,7 @@ final class OperationServiceImpl implements OperationService {
         private Object retryOrGetResult(InvocationImpl inv) {
             Object result;
             try {
-                result = inv.doGet(0, TimeUnit.MILLISECONDS);
+                result = inv.doGet(100, TimeUnit.MILLISECONDS);
             } catch (Throwable e) {
                 result = e;
             }
@@ -473,7 +472,6 @@ final class OperationServiceImpl implements OperationService {
     }
 
     private void handleBackupAndFinalizeOperation(final Operation op, final int syncBackupCount, final int asyncBackupCount) {
-        final int maxRetryCount = 100;
         if (syncBackupCount == 0) { // if sync backup is zero, send response immediately!
             sendResponse(op, null);
         }
@@ -498,7 +496,7 @@ final class OperationServiceImpl implements OperationService {
                     } else {
                         if (backupOp.returnsResponse()) {
                             final InvocationImpl inv = (InvocationImpl) createInvocationBuilder(serviceName, backupOp, partitionId)
-                                    .setReplicaIndex(replicaIndex).setTryCount(maxRetryCount).build();
+                                    .setReplicaIndex(replicaIndex).setTryPauseMillis(100).build();
 
                             inv.setCallback(callback);
                             inv.invoke();
