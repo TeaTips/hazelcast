@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
 import static com.hazelcast.transaction.Transaction.State.*;
@@ -37,7 +36,7 @@ final class TransactionImpl implements Transaction {
 
     private static final ThreadLocal<Boolean> threadFlag = new ThreadLocal<Boolean>();
 
-    private final TransactionManagerServiceImpl transactionManagerService;
+    private final TransactionManagerService transactionManagerService;
     private final NodeEngine nodeEngine;
     private final List<TransactionLog> txLogs = new LinkedList<TransactionLog>();
     private final String txnId;
@@ -49,7 +48,7 @@ final class TransactionImpl implements Transaction {
     private long startTime = 0L;
     private Address[] backupAddresses;
 
-    public TransactionImpl(TransactionManagerServiceImpl transactionManagerService, NodeEngine nodeEngine, TransactionOptions options) {
+    public TransactionImpl(TransactionManagerService transactionManagerService, NodeEngine nodeEngine, TransactionOptions options) {
         this.transactionManagerService = transactionManagerService;
         this.nodeEngine = nodeEngine;
         this.txnId = UUID.randomUUID().toString();
@@ -59,7 +58,7 @@ final class TransactionImpl implements Transaction {
     }
 
     // used by tx backups
-    TransactionImpl(TransactionManagerServiceImpl transactionManagerService, NodeEngine nodeEngine,
+    TransactionImpl(TransactionManagerService transactionManagerService, NodeEngine nodeEngine,
                     String txnId, List<TransactionLog> txLogs, long timeoutMillis, long startTime) {
         this.transactionManagerService = transactionManagerService;
         this.nodeEngine = nodeEngine;
@@ -130,7 +129,7 @@ final class TransactionImpl implements Transaction {
                 final OperationService operationService = nodeEngine.getOperationService();
                 for (Address backupAddress : backupAddresses) {
                     if (nodeEngine.getClusterService().getMember(backupAddress) != null){
-                        final Invocation inv = operationService.createInvocationBuilder(TransactionManagerServiceImpl.SERVICE_NAME,
+                        final Invocation inv = operationService.createInvocationBuilder(TransactionManagerService.SERVICE_NAME,
                                 new ReplicateTxOperation(txLogs, nodeEngine.getLocalMember().getUuid(), txnId, timeoutMillis, startTime),
                                 backupAddress).build();
                         futures.add(inv.invoke());
@@ -204,7 +203,7 @@ final class TransactionImpl implements Transaction {
             if (durability > 0 && transactionType.equals(TransactionType.TWO_PHASE)) {
                 for (Address backupAddress : backupAddresses) {
                     if (nodeEngine.getClusterService().getMember(backupAddress) != null){
-                        final Invocation inv = operationService.createInvocationBuilder(TransactionManagerServiceImpl.SERVICE_NAME,
+                        final Invocation inv = operationService.createInvocationBuilder(TransactionManagerService.SERVICE_NAME,
                                 new RollbackTxBackupOperation(txnId), backupAddress).build();
                         futures.add(inv.invoke());
                     }
@@ -247,7 +246,7 @@ final class TransactionImpl implements Transaction {
             for (Address backupAddress : backupAddresses) {
                 if (nodeEngine.getClusterService().getMember(backupAddress) != null){
                     try {
-                        final Invocation inv = operationService.createInvocationBuilder(TransactionManagerServiceImpl.SERVICE_NAME,
+                        final Invocation inv = operationService.createInvocationBuilder(TransactionManagerService.SERVICE_NAME,
                                 new PurgeTxBackupOperation(txnId), backupAddress).build();
                         inv.invoke();
                     } catch (Throwable e) {

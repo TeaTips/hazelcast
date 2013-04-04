@@ -54,7 +54,7 @@ public final class ReplicateTxOperation extends Operation {
 
     @Override
     public final void run() throws Exception {
-        TransactionManagerServiceImpl txManagerService = getService();
+        TransactionManagerService txManagerService = getService();
         txManagerService.putTxBackupLog(txLogs, callerUuid, txnId, timeoutMillis, startTime);
     }
 

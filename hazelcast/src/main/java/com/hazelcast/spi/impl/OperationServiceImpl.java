@@ -34,6 +34,7 @@ import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.spi.exception.*;
 import com.hazelcast.spi.impl.PartitionIteratingOperation.PartitionResponse;
 import com.hazelcast.util.Clock;
+import com.hazelcast.util.SpinReadWriteLock;
 import com.hazelcast.util.executor.BlockingFastExecutor;
 import com.hazelcast.util.executor.FastExecutor;
 import com.hazelcast.util.executor.PoolExecutorThreadFactory;
@@ -44,8 +45,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 
 /**
@@ -58,8 +57,8 @@ final class OperationServiceImpl implements OperationService {
     private final ILogger logger;
     private final AtomicLong remoteCallIdGen = new AtomicLong();
     private final ConcurrentMap<Long, RemoteCall> remoteCalls;
-    private final Lock[] ownerLocks;
     private final ReadWriteLock[] partitionLocks;
+    private final Semaphore[] keyLocks;
     private final FastExecutor executor;
     private final long defaultCallTimeout;
     private final Set<RemoteCallKey> executingCalls;
@@ -94,16 +93,14 @@ final class OperationServiceImpl implements OperationService {
                         + ", Current: " + executor.getActiveThreadCount() + ", Max: " + executor.getMaxThreadSize());
             }
         });
-        ownerLocks = new Lock[100000];
-        for (int i = 0; i < ownerLocks.length; i++) {
-//            ownerLocks[i] = new SpinLock();
-            ownerLocks[i] = new ReentrantLock();
+        keyLocks = new Semaphore[100000];
+        for (int i = 0; i < keyLocks.length; i++) {
+            keyLocks[i] = new Semaphore(1);
         }
         int partitionCount = node.groupProperties.PARTITION_COUNT.getInteger();
         partitionLocks = new ReadWriteLock[partitionCount];
         for (int i = 0; i < partitionCount; i++) {
-//            partitionLocks[i] = new SpinReadWriteLock();
-            partitionLocks[i] = new ReentrantReadWriteLock();
+            partitionLocks[i] = new SpinReadWriteLock();
         }
         executingCalls = Collections.newSetFromMap(new ConcurrentHashMap<RemoteCallKey, Boolean>(1000, 0.75f, (reallyMultiCore ? coreSize * 4 : 16)));
     }
@@ -188,11 +185,9 @@ final class OperationServiceImpl implements OperationService {
                     }
                     if (op instanceof KeyBasedOperation && !(op instanceof BackupOperation)) {
                         final int hash = ((KeyBasedOperation) op).getKeyHash();
-                        final Lock[] locks = ownerLocks;
-                        final Lock keyLock = locks[Math.abs(hash) % locks.length];
-                        if (!keyLock.tryLock(100, TimeUnit.MILLISECONDS)) {
-                            throw new RetryableHazelcastException("Key lock cannot be acquired!");
-                        }
+                        final Semaphore[] locks = keyLocks;
+                        final Semaphore keyLock = locks[Math.abs(hash) % locks.length];
+                        keyLock.acquire();
                         finalizer.setKeyLock(keyLock);
                     }
                 }
@@ -208,27 +203,33 @@ final class OperationServiceImpl implements OperationService {
     private final class OperationFinalizerImpl implements OperationFinalizer {
         final Operation op;
         final RemoteCallKey callKey;
+        final WaitNotifyKey waitNotifyKey;
         volatile Lock partitionLock;
-        volatile Lock keyLock;
+        volatile Semaphore keyLock;
 
-        OperationFinalizerImpl(Operation op, RemoteCallKey callKey) {
+        volatile boolean executed = false;
+
+        OperationFinalizerImpl(final Operation op, RemoteCallKey callKey) {
             this.op = op;
             this.callKey = callKey;
+            this.waitNotifyKey = null;
         }
 
-        OperationFinalizerImpl(Operation op, RemoteCallKey callKey, Lock partitionLock, Lock keyLock) {
+        OperationFinalizerImpl(Operation op, RemoteCallKey callKey, Lock partitionLock, Semaphore keyLock, WaitNotifyKey key) {
             this.op = op;
             this.callKey = callKey;
             this.partitionLock = partitionLock;
             this.keyLock = keyLock;
+            this.waitNotifyKey = key;
         }
 
         public void run() {
+            executed = true;
             try {
                 afterCallExecution(op, callKey);
             } finally {
                 if (keyLock != null) {
-                    keyLock.unlock();
+                    keyLock.release();
                 }
                 if (partitionLock != null) {
                     partitionLock.unlock();
@@ -236,17 +237,15 @@ final class OperationServiceImpl implements OperationService {
             }
         }
 
-        void transfer(Operation nextOp, RemoteCallKey nextCallKey) {
-            OperationAccessor.removeFinalizer(op);
+        public void runWithoutUnlock() {
             afterCallExecution(op, callKey);
-            OperationAccessor.setFinalizer(nextOp, new OperationFinalizerImpl(nextOp, nextCallKey, partitionLock, keyLock));
         }
 
         void setPartitionLock(Lock partitionLock) {
             this.partitionLock = partitionLock;
         }
 
-        void setKeyLock(Lock keyLock) {
+        void setKeyLock(Semaphore keyLock) {
             this.keyLock = keyLock;
         }
     }
@@ -263,18 +262,24 @@ final class OperationServiceImpl implements OperationService {
         return false;
     }
 
-    public void runOperationUnderExistingLock(Operation parentOp, Operation op) {
+    @PrivateApi
+    void runNotifiedOperation(final Operation notifier, final Operation op, WaitNotifyKey key) {
         final ThreadContext threadContext = ThreadContext.getOrCreate();
         threadContext.setCurrentOperation(op);
+        final WaitNotifyKey realKey = notifier instanceof Notifier ? ((Notifier) notifier).getNotifiedKey() : key;
         final RemoteCallKey callKey = beforeCallExecution(op);
-        final OperationFinalizerImpl finalizer = (OperationFinalizerImpl) OperationAccessor.removeFinalizer(parentOp);
+        final OperationFinalizerImpl finalizer = OperationAccessor.removeFinalizer(notifier);
         if (finalizer != null) {
-            finalizer.transfer(op, callKey);
+            finalizer.runWithoutUnlock();
+            OperationAccessor.setFinalizer(op, new OperationFinalizerImpl(op, callKey,
+                    finalizer.partitionLock, finalizer.keyLock, realKey));
+        } else {
+            OperationAccessor.setFinalizer(op, new OperationFinalizerImpl(op, callKey, null, null, realKey));
         }
         try {
             doRunOperation(op);
         } finally {
-            threadContext.setCurrentOperation(parentOp);
+            threadContext.setCurrentOperation(notifier);
         }
     }
 
@@ -347,10 +352,18 @@ final class OperationServiceImpl implements OperationService {
                 nodeEngine.waitNotifyService.notify(notifier);
             }
         }
+
         // finalize op
-        final OperationFinalizer finalizer = OperationAccessor.removeFinalizer(op);
+        // finalizer will be null if op notified an another op.
+        OperationFinalizerImpl finalizer = OperationAccessor.getFinalizer(op);
         if (finalizer != null) {
-            finalizer.run();
+            if (finalizer.waitNotifyKey != null) {
+                nodeEngine.waitNotifyService.notify(op, finalizer.waitNotifyKey);
+            }
+            finalizer = OperationAccessor.removeFinalizer(op);
+            if (finalizer != null) {
+                finalizer.run();
+            }
         }
     }
 
@@ -390,20 +403,16 @@ final class OperationServiceImpl implements OperationService {
                     if (obj != null) {
                         if (obj instanceof Throwable) {
                             final Throwable error = (Throwable) obj;
-                            if (error instanceof MemberLeftException) {
+                            if (partition.getReplicaAddress(replicaIndex) == null) {
                                 logger.log(Level.FINEST, "Target left while backing up, no need to retry -> " + error.getMessage());
                             } else {
-                                if (partition.getReplicaAddress(replicaIndex) == null) {
-                                    logger.log(Level.FINEST, "Target left while backing up, no need to retry -> " + error.getMessage());
-                                } else {
-                                    logger.log(Level.WARNING, "While backing up: " + op + " -> " + error.getMessage(), error);
-                                }
+                                logger.log(Level.WARNING, "While backing up: " + op + " -> " + error.getMessage(), error);
                             }
                         }
                         if (singleBackup) {
                             response = obj;
                         } else {
-                            responses[replicaIndex] = obj;
+                            responses[replicaIndex - 1] = obj;
                         }
                     }
 
@@ -415,6 +424,7 @@ final class OperationServiceImpl implements OperationService {
                         sendResponse(op, null);
                     }
                     if (allDone) {
+//                        f.cancel(false);
                         finalizeOperation(op);
                     }
                 } catch (Throwable e) {
@@ -439,22 +449,24 @@ final class OperationServiceImpl implements OperationService {
         private Object retryOrGetResult(InvocationImpl inv) {
             Object result;
             try {
-                result = inv.doGet(10, TimeUnit.MILLISECONDS);
+                result = inv.doGet(0, TimeUnit.MILLISECONDS);
             } catch (Throwable e) {
                 result = e;
             }
             if (result instanceof MemberLeftException) {
-                return result;
+                // backup replica left! no need to retry!
+                return Boolean.TRUE;
             }
             if (partition.getReplicaAddress(inv.getReplicaIndex()) == null) {
                 // backup replica is down! no need to retry!
-                return InvocationImpl.NULL_RESPONSE;
+                return Boolean.TRUE;
             }
+            final boolean canRetry = inv.getMaxTryCount() > inv.getInvokeCount();
             if (result == InvocationImpl.TIMEOUT_RESPONSE) {
-                return null;
+                return canRetry ? null : new CallTimeoutException();
             }
-            if (result instanceof RetryableException && inv.getTryCount() > inv.getInvokeCount()) {
-                return null;
+            if (result instanceof RetryableException) {
+                return canRetry ? null : result;
             }
             return result;
         }
@@ -484,13 +496,17 @@ final class OperationServiceImpl implements OperationService {
                     if (target.equals(node.getThisAddress())) {
                         throw new IllegalStateException("Normally shouldn't happen! Partition seems migrated between operation and backup!");
                     } else {
-                        final InvocationImpl inv = (InvocationImpl) createInvocationBuilder(serviceName, backupOp, partitionId)
-                                .setReplicaIndex(replicaIndex).setTryCount(maxRetryCount).build();
+                        if (backupOp.returnsResponse()) {
+                            final InvocationImpl inv = (InvocationImpl) createInvocationBuilder(serviceName, backupOp, partitionId)
+                                    .setReplicaIndex(replicaIndex).setTryCount(maxRetryCount).build();
 
-                        inv.setCallback(callback);
-                        inv.invoke();
-                        if (!backupOp.returnsResponse()) {
-                            inv.notify(Boolean.TRUE);
+                            inv.setCallback(callback);
+                            inv.invoke();
+                        } else {
+                            // means fire-and-forget backup...
+                            backupOp.setNodeEngine(nodeEngine).setPartitionId(partitionId).setReplicaIndex(replicaIndex).setServiceName(serviceName);
+                            send(backupOp, target);
+                            callback.setResponse(Boolean.TRUE, replicaIndex);
                         }
                     }
                 } else {
@@ -511,7 +527,7 @@ final class OperationServiceImpl implements OperationService {
         }
         if (e instanceof RetryableException) {
             final Level level = op.returnsResponse() ? Level.FINEST : Level.WARNING;
-            logger.log(level, "While executing op: " + op + " -> " + e.getClass() + ": " + e.getMessage());
+            logger.log(level, "While executing op: " + op + " -> " + e.getClass().getName() + ": " + e.getMessage());
         } else {
             final Level level = nodeEngine.isActive() ? Level.SEVERE : Level.FINEST;
             logger.log(level, "While executing op: " + op + " -> " + e.getMessage(), e);
@@ -703,8 +719,8 @@ final class OperationServiceImpl implements OperationService {
             call.offerResponse(response);
         }
         remoteCalls.clear();
-        for (int i = 0; i < ownerLocks.length; i++) {
-            ownerLocks[i] = null;
+        for (int i = 0; i < keyLocks.length; i++) {
+            keyLocks[i] = null;
         }
     }
 

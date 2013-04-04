@@ -41,7 +41,7 @@ class WaitNotifyServiceImpl implements WaitNotifyService {
     private final DelayQueue delayQueue = new DelayQueue();
     private final ExecutorService expirationService;
     private final Future expirationTask;
-    private final NodeEngine nodeEngine;
+    private final NodeEngineImpl nodeEngine;
     private final ILogger logger;
 
     public WaitNotifyServiceImpl(final NodeEngineImpl nodeEngine) {
@@ -111,7 +111,7 @@ class WaitNotifyServiceImpl implements WaitNotifyService {
         }
     };
 
-    // runs after queue lock
+    @Override
     public void await(WaitSupport waitSupport) {
         final WaitNotifyKey key = waitSupport.getWaitKey();
         final Queue<WaitingOp> q = ConcurrencyUtil.getOrPutIfAbsent(mapWaitingOps, key, waitQueueConstructor);
@@ -124,36 +124,41 @@ class WaitNotifyServiceImpl implements WaitNotifyService {
         q.offer(waitingOp);
     }
 
-    // runs after queue lock
-    public void notify(Notifier notifier) {
-        WaitNotifyKey key = notifier.getNotifiedKey();
+
+    public boolean notify(Notifier notifier) {
+        return notify((Operation) notifier, notifier.getNotifiedKey());
+    }
+
+    public boolean notify(Operation notifier, WaitNotifyKey key) {
         Queue<WaitingOp> q = mapWaitingOps.get(key);
-        if (q == null) return;
-        WaitingOp waitingOp = q.peek();
-        while (waitingOp != null) {
+        if (q == null) return false;
+
+        boolean foundWaitingOp = false;
+        do {
+            WaitingOp waitingOp = q.peek();
+            if (waitingOp == null) {
+                return false;
+            }
             final Operation op = waitingOp.getOperation();
             if (notifier == op) {
                 throw new IllegalStateException("Found cyclic wait-notify! -> " + notifier);
             }
             if (waitingOp.isValid()) {
+                waitingOp.setValid(false);
                 if (waitingOp.isExpired()) {
                     // expired
                     waitingOp.onExpire();
                 } else {
                     if (waitingOp.shouldWait()) {
-                        return;
+                        return false;
                     }
-                    processUnderExistingLock(null, op);
+                    nodeEngine.operationService.runNotifiedOperation(notifier, op, key);
+                    foundWaitingOp = true;
                 }
-                waitingOp.setValid(false);
             }
             q.poll(); // consume
-            waitingOp = q.peek();
-        }
-    }
-
-    private void processUnderExistingLock(Operation parentOp, Operation op) {
-        nodeEngine.getOperationService().runOperationUnderExistingLock(parentOp, op);
+        } while (!foundWaitingOp);
+        return foundWaitingOp;
     }
 
     // invalidated waiting ops will removed from queue eventually by notifiers.

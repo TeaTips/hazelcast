@@ -34,6 +34,8 @@ public final class SpinLock implements Lock {
 
     private long tid = -1L;
 
+    private int count = 0;
+
     public SpinLock() {
         spinInterval = 1;
     }
@@ -68,6 +70,7 @@ public final class SpinLock implements Lock {
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
         final Thread currentThread = Thread.currentThread();
         if (currentThread.getId() == tid) {
+            count++;
             return true;
         }
         final long timeInMillis = unit.toMillis(time > 0 ? time : 0);
@@ -80,6 +83,7 @@ public final class SpinLock implements Lock {
             }
         }
         tid = currentThread.getId();
+        count = 1;
         return true;
     }
 
@@ -88,10 +92,15 @@ public final class SpinLock implements Lock {
         if (currentThread.getId() != tid) {
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
+        if (count > 1) {
+            count--;
+            return;
+        }
         if (!locked.getAndSet(false)) {
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
         tid = -1L;
+        count = 0;
     }
 
     public Condition newCondition() {

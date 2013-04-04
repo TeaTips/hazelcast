@@ -26,6 +26,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
+ * Behaves like semaphore, has no notion of ownership!
+ *
  * @mdogan 12/3/12
  */
 public final class SpinReadWriteLock implements ReadWriteLock {
@@ -34,9 +36,11 @@ public final class SpinReadWriteLock implements ReadWriteLock {
 
     private final AtomicBoolean locked = new AtomicBoolean(false);
 
-    private long tid = -1L;
-
     private final AtomicInteger readCount = new AtomicInteger();
+
+    private final Lock readLock = new ReadLock();
+
+    private final Lock writeLock = new WriteLock();
 
     public SpinReadWriteLock() {
         this.spinInterval = 1;
@@ -48,11 +52,11 @@ public final class SpinReadWriteLock implements ReadWriteLock {
     }
 
     public Lock readLock() {
-        return new ReadLock();
+        return readLock;
     }
 
     public Lock writeLock() {
-        return new WriteLock();
+        return writeLock;
     }
 
     private boolean acquireReadLock(final long time, TimeUnit unit) throws InterruptedException {
@@ -78,10 +82,6 @@ public final class SpinReadWriteLock implements ReadWriteLock {
     }
 
     private boolean acquireWriteLock(final long time, TimeUnit unit) throws InterruptedException {
-        final Thread currentThread = Thread.currentThread();
-        if (currentThread.getId() == tid) {
-            return true;
-        }
         final long spin = spinInterval;
         final long timeInMillis = unit.toMillis(time > 0 ? time : 0);
         long elapsed = 0L;
@@ -98,19 +98,13 @@ public final class SpinReadWriteLock implements ReadWriteLock {
                 return false;
             }
         }
-        tid = currentThread.getId();
         return true;
     }
 
     private void releaseWriteLock() {
-        final Thread currentThread = Thread.currentThread();
-        if (currentThread.getId() != tid) {
-            throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
-        }
         if (!locked.getAndSet(false)) {
             throw new IllegalMonitorStateException("Current thread is not owner of the lock!");
         }
-        tid = -1L;
     }
 
     private final class ReadLock implements Lock {

@@ -229,6 +229,11 @@ public abstract class Operation implements DataSerializable {
     private transient volatile OperationFinalizer finalizer;
 
     // Accessed using OperationAccessor
+    OperationFinalizer getFinalizer() {
+        return finalizer;
+    }
+
+    // Accessed using OperationAccessor
     OperationFinalizer removeFinalizer() {
         final OperationFinalizer f = finalizer;
         if (f != null) {

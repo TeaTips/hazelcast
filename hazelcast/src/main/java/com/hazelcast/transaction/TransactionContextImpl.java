@@ -35,7 +35,7 @@ class TransactionContextImpl implements TransactionContext {
     private final TransactionImpl transaction;
     private final Map<TransactionalObjectKey, TransactionalObject> txnObjectMap = new HashMap<TransactionalObjectKey, TransactionalObject>(2);
 
-    public TransactionContextImpl(TransactionManagerServiceImpl transactionManagerService, NodeEngineImpl nodeEngine, TransactionOptions options) {
+    public TransactionContextImpl(TransactionManagerService transactionManagerService, NodeEngineImpl nodeEngine, TransactionOptions options) {
         this.nodeEngine = nodeEngine;
         this.transaction = new TransactionImpl(transactionManagerService, nodeEngine, options);
     }

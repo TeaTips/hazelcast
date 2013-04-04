@@ -39,14 +39,6 @@ public interface OperationService {
      */
     void executeOperation(final Operation op);
 
-    /**
-     * Runs operation in caller thread without re-acquiring operation locks,
-     * assuming current thread owns all required locks.
-     *
-     * @param op
-     */
-    void runOperationUnderExistingLock(Operation parentOp, Operation op);
-
     InvocationBuilder createInvocationBuilder(String serviceName, Operation op, int partitionId);
 
     InvocationBuilder createInvocationBuilder(String serviceName, Operation op, Address target);

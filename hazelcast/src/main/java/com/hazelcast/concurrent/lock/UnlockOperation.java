@@ -29,7 +29,6 @@ import java.io.IOException;
 public class UnlockOperation extends BaseLockOperation implements Notifier, BackupAwareOperation {
 
     private boolean force = false;
-    private transient boolean shouldNotify;
 
     public UnlockOperation() {
     }
@@ -56,9 +55,8 @@ public class UnlockOperation extends BaseLockOperation implements Notifier, Back
     public void afterRun() throws Exception {
         final AwaitOperation awaitResponse = getLockStore().pollExpiredAwaitOp(key);
         if (awaitResponse != null) {
-            getNodeEngine().getOperationService().runOperationUnderExistingLock(null, awaitResponse);
+            getNodeEngine().getWaitNotifyService().await(awaitResponse);
         }
-        shouldNotify = awaitResponse == null;
     }
 
     public Operation getBackupOperation() {
@@ -70,7 +68,7 @@ public class UnlockOperation extends BaseLockOperation implements Notifier, Back
     }
 
     public boolean shouldNotify() {
-        return /*!getOrCreateDefaultLockStore().isLocked(key) && */ shouldNotify;
+        return true;
     }
 
     public final WaitNotifyKey getNotifiedKey() {

@@ -19,7 +19,4 @@ package com.hazelcast.spi;
 public interface WaitNotifyService {
 
     void await(WaitSupport waitSupport);
-
-    void notify(Notifier notifier);
-
 }

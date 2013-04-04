@@ -44,7 +44,7 @@ public final class PurgeTxBackupOperation extends Operation {
 
     @Override
     public void run() throws Exception {
-        TransactionManagerServiceImpl txManagerService = getService();
+        TransactionManagerService txManagerService = getService();
         txManagerService.purgeTxBackupLog(txnId);
     }
 

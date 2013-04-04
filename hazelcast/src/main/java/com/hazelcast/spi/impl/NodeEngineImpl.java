@@ -35,7 +35,6 @@ import com.hazelcast.partition.PartitionService;
 import com.hazelcast.spi.*;
 import com.hazelcast.spi.annotation.PrivateApi;
 import com.hazelcast.transaction.TransactionManagerService;
-import com.hazelcast.transaction.TransactionManagerServiceImpl;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -54,7 +53,7 @@ public class NodeEngineImpl implements NodeEngine {
     final EventServiceImpl eventService;
     final AsyncInvocationServiceImpl asyncInvocationService;
     final WaitNotifyServiceImpl waitNotifyService;
-    final TransactionManagerServiceImpl transactionManagerService;
+    final TransactionManagerService transactionManagerService;
 
     public NodeEngineImpl(Node node) {
         this.node = node;
@@ -66,7 +65,7 @@ public class NodeEngineImpl implements NodeEngine {
         eventService = new EventServiceImpl(this);
         asyncInvocationService = new AsyncInvocationServiceImpl(this);
         waitNotifyService = new WaitNotifyServiceImpl(this);
-        transactionManagerService = new TransactionManagerServiceImpl(this);
+        transactionManagerService = new TransactionManagerService(this);
     }
 
     @PrivateApi
@@ -127,7 +126,7 @@ public class NodeEngineImpl implements NodeEngine {
         return asyncInvocationService;
     }
 
-    public WaitNotifyService getWaitNotifyService() {
+    public WaitNotifyServiceImpl getWaitNotifyService() {
         return waitNotifyService;
     }
 

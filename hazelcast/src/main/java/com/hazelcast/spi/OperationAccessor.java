@@ -70,8 +70,12 @@ public final class OperationAccessor {
         op.setFinalizer(f);
     }
 
-    public static OperationFinalizer removeFinalizer(Operation op) {
-        return op.removeFinalizer();
+    public static <T extends OperationFinalizer> T getFinalizer(Operation op) {
+        return (T) op.getFinalizer();
+    }
+
+    public static <T extends OperationFinalizer> T removeFinalizer(Operation op) {
+        return (T) op.removeFinalizer();
     }
 
     private OperationAccessor() {

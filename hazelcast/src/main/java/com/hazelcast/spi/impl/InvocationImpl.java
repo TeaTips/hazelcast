@@ -18,7 +18,9 @@ package com.hazelcast.spi.impl;
 
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.core.MemberLeftException;
 import com.hazelcast.core.OperationTimeoutException;
+import com.hazelcast.instance.MemberImpl;
 import com.hazelcast.instance.ThreadContext;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.Address;
@@ -56,7 +58,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
     protected final Operation op;
     protected final int partitionId;
     protected final int replicaIndex;
-    protected final int tryCount;
+    protected final int maxTryCount;
     protected final long tryPauseMillis;
     protected final ILogger logger;
     private volatile int invokeCount = 0;
@@ -66,13 +68,13 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
     private Callback<InvocationImpl> callback;
 
     InvocationImpl(NodeEngineImpl nodeEngine, String serviceName, Operation op, int partitionId,
-                   int replicaIndex, int tryCount, long tryPauseMillis, long callTimeout) {
+                   int replicaIndex, int maxTryCount, long tryPauseMillis, long callTimeout) {
         this.nodeEngine = nodeEngine;
         this.serviceName = serviceName;
         this.op = op;
         this.partitionId = partitionId;
         this.replicaIndex = replicaIndex;
-        this.tryCount = tryCount;
+        this.maxTryCount = maxTryCount;
         this.tryPauseMillis = tryPauseMillis;
         this.callTimeout = getCallTimeout(callTimeout);
         this.logger = nodeEngine.getLogger(Invocation.class.getName());
@@ -93,11 +95,23 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
     }
 
     public void notify(Object result) {
-        setResult(result);
+        if (result == null) {
+            result = NULL_RESPONSE;
+        }
+        responseQ.offer(result);
         final Callback<InvocationImpl> callbackLocal = callback;
         if (callbackLocal != null) {
             callbackLocal.notify(this);
         }
+    }
+
+    void onMemberLeft(MemberImpl leftMember) {
+        final OperationFinalizer finalizer = OperationAccessor.removeFinalizer(op);
+        if (finalizer != null) {
+            finalizer.run();
+        }
+        remote = false;
+        notify(new MemberLeftException(leftMember));
     }
 
     public abstract Address getTarget();
@@ -122,7 +136,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
             doInvoke();
         } catch (Exception e) {
             if (e instanceof RetryableException) {
-                setResult(e);
+                notify(e);
             } else {
                 throw ExceptionUtil.rethrow(e);
             }
@@ -141,20 +155,20 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
         if (target == null) {
             remote = false;
             if (isActive()) {
-                setResult(new WrongTargetException(thisAddress, target, partitionId, replicaIndex, op.getClass().getName(), serviceName));
+                notify(new WrongTargetException(thisAddress, target, partitionId, replicaIndex, op.getClass().getName(), serviceName));
             } else {
-                setResult(new HazelcastInstanceNotActiveException());
+                notify(new HazelcastInstanceNotActiveException());
             }
         } else if (!OperationAccessor.isJoinOperation(op) && nodeEngine.getClusterService().getMember(target) == null) {
-            setResult(new TargetNotMemberException(target, partitionId, op.getClass().getName(), serviceName));
+            notify(new TargetNotMemberException(target, partitionId, op.getClass().getName(), serviceName));
         } else {
             if (op.getPartitionId() != partitionId) {
-                setResult(new IllegalStateException("Partition id of operation: " + op.getPartitionId() +
+                notify(new IllegalStateException("Partition id of operation: " + op.getPartitionId() +
                         " is not equal to the partition id of invocation: " + partitionId));
                 return;
             }
             if (op.getReplicaIndex() != replicaIndex) {
-                setResult(new IllegalStateException("Replica index of operation: " + op.getReplicaIndex() +
+                notify(new IllegalStateException("Replica index of operation: " + op.getReplicaIndex() +
                         " is not equal to the replica index of invocation: " + replicaIndex));
                 return;
             }
@@ -171,7 +185,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
                 OperationAccessor.setCallId(op, callId);
                 boolean sent = operationService.send(op, target);
                 if (!sent) {
-                    setResult(new RetryableIOException("Packet not sent to -> " + target));
+                    notify(new RetryableIOException("Packet not sent to -> " + target));
                 }
             }
         }
@@ -179,13 +193,6 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
 
     private boolean isActive() {
         return nodeEngine.getNode().isActive();
-    }
-
-    private void setResult(Object result) {
-        if (result == null) {
-            result = NULL_RESPONSE;
-        }
-        responseQ.offer(result);
     }
 
     public Object get() throws InterruptedException, ExecutionException {
@@ -246,8 +253,8 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
                 final Throwable error = (Throwable) response;
                 final InvocationAction action = op.onException(error);
                 final int localInvokeCount = invokeCount;
-                if (action == InvocationAction.RETRY_INVOCATION && localInvokeCount < tryCount && timeout > 0) {
-                    if (localInvokeCount > 5) {
+                if (action == InvocationAction.RETRY_INVOCATION && localInvokeCount < maxTryCount) {
+                    if (localInvokeCount > 5 && timeout > 0) {
                         final long sleepTime = tryPauseMillis;
                         try {
                             Thread.sleep(sleepTime);
@@ -258,7 +265,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
                     }
                     // TODO: @mm - improve logging (see SystemLogService)
                     if (localInvokeCount > 99 && localInvokeCount % 10 == 0) {
-//                        logger.log(Level.WARNING, "Retrying invocation: " + toString() + ", Reason: " + error);
+                        logger.log(Level.WARNING, "Retrying invocation: " + toString() + ", Reason: " + error);
                     }
                     doInvoke();
                 } else if (action == InvocationAction.CONTINUE_WAIT) {
@@ -279,7 +286,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
                     continue;
                 }
                 // TODO: @mm - improve logging (see SystemLogService)
-//                logger.log(Level.WARNING, "No response for " + lastPollTime + " ms. " + toString());
+                logger.log(Level.WARNING, "No response for " + lastPollTime + " ms. " + toString());
 
                 boolean executing = isOperationExecuting(target);
                 if (!executing) {
@@ -428,8 +435,8 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
         return invokeCount;
     }
 
-    public int getTryCount() {
-        return tryCount;
+    public int getMaxTryCount() {
+        return maxTryCount;
     }
 
     public boolean isDone() {
@@ -485,7 +492,7 @@ abstract class InvocationImpl implements Future, Invocation, Callback<Object> {
         sb.append(", op=").append(op);
         sb.append(", partitionId=").append(partitionId);
         sb.append(", replicaIndex=").append(replicaIndex);
-        sb.append(", tryCount=").append(tryCount);
+        sb.append(", tryCount=").append(maxTryCount);
         sb.append(", tryPauseMillis=").append(tryPauseMillis);
         sb.append(", invokeCount=").append(invokeCount);
         sb.append(", callTimeout=").append(callTimeout);

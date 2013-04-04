@@ -41,7 +41,7 @@
         </link>
         s is done by
         <link
-                xlink:href="http://download.oracle.com/javase/1.5.0/docs/api/javax/security/auth/callback/CallbackHandler.html"
+                xlink:href="http://download.oracle.com/javase/1.5.0/docs/api/javax/security/auth/invocation/CallbackHandler.html"
                 >
             <literal>CallbackHandler</literal>
         </link>
@@ -79,9 +79,9 @@ public class CustomLoginModule implements LoginModule {
     }
 
     public final boolean login() throws LoginException {
-        CredentialsCallback callback = new CredentialsCallback();
+        CredentialsCallback invocation = new CredentialsCallback();
         try {
-            callbackHandler.handle(new Callback[]{callback});
+            callbackHandler.handle(new Callback[]{invocation});
             credentials = cb.getCredentials();
         } catch (Exception e) {
             throw new LoginException(e.getMessage());
@@ -117,7 +117,7 @@ public class MyCustomLoginModule implements LoginModule {
     <para>Hazelcast also has an abstract implementation of
         <literal>LoginModule</literal>
         that does
-        callback and cleanup operations and holds resulting
+        invocation and cleanup operations and holds resulting
         <literal>Credentials</literal>
         instance.
         <literal>LoginModule</literal>s extending

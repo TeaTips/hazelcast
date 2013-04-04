@@ -44,7 +44,7 @@ public final class RollbackTxBackupOperation extends Operation {
 
     @Override
     public void run() throws Exception {
-        TransactionManagerServiceImpl txManagerService = getService();
+        TransactionManagerService txManagerService = getService();
         txManagerService.rollbackTxBackupLog(txnId);
     }
 
