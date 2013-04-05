@@ -37,7 +37,7 @@ public class SpinningFastExecutor extends FastExecutorSupport implements FastExe
     private final AtomicInteger spinningThreads = new AtomicInteger();
 
     public SpinningFastExecutor(int coreThreadSize, String namePrefix, ThreadFactory threadFactory) {
-        this(coreThreadSize, coreThreadSize * 10, coreThreadSize * (1 << 16),
+        this(coreThreadSize, coreThreadSize * 20, coreThreadSize * (1 << 16),
                 500L, namePrefix, threadFactory, TimeUnit.SECONDS.toMillis(60), false);
     }
 
